@@ -13,7 +13,7 @@
         schema: {
           enabled: { default: true },
           rotationFactor: { default: 5 },
-          minScale: { default: 0.001 }, // Allowed it to go super small if needed
+          minScale: { default: 0.001 }, 
           maxScale: { default: 8 },
         },
         init: function () {
@@ -23,7 +23,7 @@
           this.initialScale = this.el.object3D.scale.clone();
           this.scaleFactor = 1;
           this.el.sceneEl.addEventListener("markerFound", (e) => { this.isVisible = true; });
-          this.el.sceneEl.addEventListener("markerLost", (e) => { this.isVisible = false; });
+          // REMOVED markerLost listener so gestures keep working even after the marker is gone!
         },
         update: function () {
           if (this.data.enabled) {
@@ -51,7 +51,6 @@
         },
       });
 
-      // Component to detect gesture events
       AFRAME.registerComponent("gesture-detector", {
         init: function () {
           this.targetElement = this.el;
@@ -77,6 +76,7 @@
   </head>
 
   <body style="margin: 0; overflow: hidden;">
+    
     <a-scene mindar-image="imageTargetSrc: ./assets/targets.mind; autoStart: true; filterMinCF: 0.0001; filterBeta: 0.001;" 
              color-space="sRGB" 
              renderer="colorManagement: true, physicallyCorrectLights" 
@@ -88,21 +88,45 @@
         <a-asset-item id="awesome-model" src="./assets/solar_system_animation.glb"></a-asset-item>
       </a-assets>
 
-      <a-camera position="0 0 0" look-controls="enabled: false"></a-camera>
+      <a-camera id="ar-camera" position="0 0 0" look-controls="enabled: false"></a-camera>
+      
       <a-entity light="type: directional; intensity: 0.8;" position="1 1 1"></a-entity>
       <a-entity light="type: ambient; intensity: 0.5;"></a-entity>
 
-      <a-entity mindar-image-target="targetIndex: 0">
+      <a-entity id="image-target" mindar-image-target="targetIndex: 0">
         
-        <a-gltf-model src="#awesome-model" 
-                      rotation="0 0 0" 
-                      position="0 0 0" 
-                      scale="0.02 0.02 0.02"
-                      gesture-handler
-                      animation-mixer>
-        </a-gltf-model>
+        <a-entity id="model-wrapper">
+            <a-gltf-model src="#awesome-model" 
+                          rotation="0 0 0" 
+                          position="0 0 0" 
+                          scale="0.02 0.02 0.02"
+                          gesture-handler
+                          animation-mixer>
+            </a-gltf-model>
+        </a-entity>
 
       </a-entity>
     </a-scene>
+
+    <script>
+      const target = document.querySelector('#image-target');
+      const modelWrapper = document.querySelector('#model-wrapper');
+      const camera = document.querySelector('#ar-camera');
+      let isUnlocked = false;
+
+      // The second the camera sees the image marker...
+      target.addEventListener('targetFound', () => {
+        if (!isUnlocked) {
+          isUnlocked = true;
+          
+          // 1. Detach the model from the image marker and glue it to the Camera
+          camera.appendChild(modelWrapper);
+          
+          // 2. Position it exactly 5 meters in front of the phone screen
+          modelWrapper.setAttribute('position', '0 0 -5');
+        }
+      });
+    </script>
+
   </body>
 </html>
